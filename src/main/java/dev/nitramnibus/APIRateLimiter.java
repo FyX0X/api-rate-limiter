@@ -31,6 +31,8 @@ public class APIRateLimiter {
         }
         lastTimestamp = timestamp;
 
+        clearOldRequests(timestamp);
+
         HandledRequestQueue requestQueue = requestQueues.get(clientId);
 
         if (requestQueue == null) {
@@ -40,6 +42,12 @@ public class APIRateLimiter {
         }
 
         return requestQueue.allowRequest(timestamp);
+    }
+
+    private void clearOldRequests(Date timestamp) {
+        for (HandledRequestQueue requestQueue : requestQueues.values()) {
+            requestQueue.removeRequestIfTooOld(timestamp);
+        }
     }
 
     private boolean checkChronological(Date timestamp) {
@@ -65,8 +73,6 @@ public class APIRateLimiter {
          * @return true if allowed else false.
          */
         public boolean allowRequest(Date timestamp) {
-
-            removeRequestIfTooOld(timestamp);
 
             if (handledRequests.size() < maxRequestCount) {
                 // There is less than N requests in the sliding window: We can allow the new request
