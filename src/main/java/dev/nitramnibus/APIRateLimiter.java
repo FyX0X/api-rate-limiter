@@ -31,7 +31,7 @@ public class APIRateLimiter {
         }
         lastTimestamp = timestamp;
 
-        clearOldRequests(timestamp);
+        clearOldRequests(timestamp, clientId);
 
         HandledRequestQueue requestQueue = requestQueues.get(clientId);
 
@@ -44,10 +44,15 @@ public class APIRateLimiter {
         return requestQueue.allowRequest(timestamp);
     }
 
-    private void clearOldRequests(Date timestamp) {
-        for (HandledRequestQueue requestQueue : requestQueues.values()) {
-            requestQueue.removeRequestIfTooOld(timestamp);
+    private void clearOldRequests(Date timestamp, long currentClientId) {
+        ArrayList<Long> toRemove = new ArrayList<>();
+        for (long clientId : requestQueues.keySet()) {
+            HandledRequestQueue requestQueue = requestQueues.get(clientId);
+            if (requestQueue.removeRequestIfTooOld(timestamp) && clientId != currentClientId) {
+                toRemove.add(clientId);
+            }
         }
+        toRemove.forEach(requestQueues.keySet()::remove);
     }
 
     private boolean checkChronological(Date timestamp) {
@@ -83,13 +88,13 @@ public class APIRateLimiter {
             return false;
         }
 
-        private void removeRequestIfTooOld(Date timestamp) {
+        private boolean removeRequestIfTooOld(Date timestamp) {
             Date limit = new Date(timestamp.getTime() - MAX_TIME_MS);
             while ( !handledRequests.isEmpty() && handledRequests.element().before(limit)) {
                 // Remove request older than MAX_TIME_MS
                 handledRequests.poll();
             }
-
+            return handledRequests.isEmpty();
         }
 
     }
